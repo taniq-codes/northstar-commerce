@@ -1,0 +1,45 @@
+services:
+  app:
+    build: .
+    command: sh -c 'pnpm db:push && pnpm db:seed && pnpm dev'
+    ports: ["3000:3000"]
+    environment:
+      NODE_ENV: development
+      CATALOG_MODE: database
+      DATABASE_URL: postgresql://northstar:northstar_dev_only@db:5432/northstar?schema=public
+      APP_NAME: Northstar Market
+      APP_URL: http://localhost:3000
+      DEFAULT_CURRENCY: BDT
+    volumes: [".:/app", "/app/node_modules"]
+    depends_on:
+      db: { condition: service_healthy }
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: northstar
+      POSTGRES_USER: northstar
+      POSTGRES_PASSWORD: northstar_dev_only
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U northstar -d northstar"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minio_dev
+      MINIO_ROOT_PASSWORD: local_minio_secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio_data:/data"]
+volumes:
+  postgres_data: {}
+  minio_data: {}
